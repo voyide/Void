@@ -9,6 +9,30 @@
         h1, h2 { border-bottom: 1px solid #00ff41; padding-bottom: 5px; }
         #log-container { max-height: 70vh; overflow-y: auto; border: 1px solid #333; padding: 10px; }
         p { margin: 5px 0; }
+        
+        /* --- New styles for detailed log entries --- */
+        .log-entry {
+            border-bottom: 1px dashed #333;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        .log-details {
+            padding-left: 20px;
+            color: #ccc; /* Lighter color for less important details */
+        }
+        .log-details span {
+            margin-right: 20px;
+        }
+        .user-agent {
+            font-size: 0.8em;
+            word-break: break-all; /* Prevents long user agents from breaking the layout */
+        }
+        strong {
+            color: #00ff41; /* Keep the main info bright */
+        }
     </style>
 </head>
 <body>

@@ -2,8 +2,10 @@
 let particles = [];
 
 function setup() {
-    let canvas = createCanvas(windowWidth, windowHeight);
-    canvas.parent('__main'); // Use a non-descriptive parent
+    // MODIFICATION: We are no longer attaching the canvas to a specific element.
+    // p5.js will automatically attach it to the <body>, which is more reliable.
+    createCanvas(windowWidth, windowHeight); 
+
     for (let i = 0; i < 100; i++) {
         particles.push(new Particle());
     }

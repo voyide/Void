@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Console</title>
+    <style>
+        body { font-family: monospace; background-color: #0c0c0c; color: #00ff41; padding: 15px; }
+        h1, h2 { border-bottom: 1px solid #00ff41; padding-bottom: 5px; }
+        #log-container { max-height: 70vh; overflow-y: auto; border: 1px solid #333; padding: 10px; }
+        p { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>SYSTEM LOG</h1>
+    <h2>TOTAL ENGAGEMENTS: <span id="visit-count">...</span></h2>
+    <div id="log-container">
+        <!-- Logs will be inserted here -->
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="terminal.js"></script>
+</body>
+</html>

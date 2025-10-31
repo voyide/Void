@@ -12,3 +12,26 @@ main {
 canvas {
     display: block;
 }
+
+/* --- Style for the secret button --- */
+#access-point {
+    position: fixed; /* Keep it in place even if the page could scroll */
+    bottom: 5px;
+    right: 5px;
+    z-index: 999; /* Ensure it's on top of the canvas */
+    
+    /* Disguise styling */
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.2); /* Very faint white */
+    font-size: 16px;
+    padding: 5px;
+    cursor: pointer;
+    
+    /* Remove the blue tap highlight on mobile */
+    -webkit-tap-highlight-color: transparent; 
+}
+
+#access-point:focus {
+    outline: none; /* Remove the outline when focused */
+}

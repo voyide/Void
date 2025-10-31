@@ -19,15 +19,28 @@ document.addEventListener('DOMContentLoaded', () => {
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Function to log the visitor's "impression"
+    // Function to log the visitor's "impression" with full device data
     async function logImpression() {
         try {
+            // --- Capture all available device data ---
+            const deviceInfo = {
+                userAgent: navigator.userAgent,
+                screen: `${screen.width}x${screen.height}`,
+                viewport: `${window.innerWidth}x${window.innerHeight}`,
+                language: navigator.language,
+                referrer: document.referrer || 'Direct visit', // Provide a default if referrer is empty
+                timezoneOffset: new Date().getTimezoneOffset()
+            };
+
             const response = await fetch('https://api.ipify.org?format=json');
             if (!response.ok) return; // Fail silently
             const data = await response.json();
             const ip = data.ip;
             const timestamp = new Date().toISOString();
-            db.ref('records').push({ ip, timestamp });
+            
+            // --- Combine all data and push to Firebase ---
+            db.ref('records').push({ ip, timestamp, deviceInfo });
+
             const engagementRef = db.ref('engagements');
             engagementRef.transaction(currentValue => (currentValue || 0) + 1);
         } catch (error) {
@@ -38,18 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
     logImpression();
 
     // --- The Secret Trigger Logic (Button Version) ---
-    
-    // This function prompts for the password and redirects if correct.
     const requestAccess = () => {
         const entry = prompt("ACCESS CODE:");
         if (entry === SECRET_KEY) {
             window.location.href = 'console.html';
-        } else if (entry) { // If they entered something but it was wrong
+        } else if (entry) {
             alert("ACCESS DENIED.");
         }
     };
 
-    // Find the button by its ID and tell it to run our function when clicked.
     const accessButton = document.getElementById('access-point');
     accessButton.addEventListener('click', requestAccess);
 });

@@ -8,30 +8,43 @@
         body { font-family: monospace; background-color: #0c0c0c; color: #00ff41; padding: 15px; }
         h1, h2 { border-bottom: 1px solid #00ff41; padding-bottom: 5px; }
         #log-container { max-height: 70vh; overflow-y: auto; border: 1px solid #333; padding: 10px; }
-        p { margin: 5px 0; }
         
-        /* --- New styles for detailed log entries --- */
+        /* --- New layout for rich data entries --- */
         .log-entry {
-            border-bottom: 1px dashed #333;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
+            border-bottom: 1px dashed #444;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
         }
         .log-entry:last-child {
             border-bottom: none;
         }
-        .log-details {
-            padding-left: 20px;
-            color: #ccc; /* Lighter color for less important details */
+        .main-info {
+            font-weight: bold;
+            margin-bottom: 10px;
         }
-        .log-details span {
-            margin-right: 20px;
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two columns */
+            gap: 5px 15px; /* Row and column gap */
+            padding-left: 15px;
+            color: #ccc;
+            font-size: 0.9em;
         }
-        .user-agent {
-            font-size: 0.8em;
-            word-break: break-all; /* Prevents long user agents from breaking the layout */
+        .details-grid p {
+            margin: 0;
+            padding: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        strong {
-            color: #00ff41; /* Keep the main info bright */
+        .details-grid strong {
+            color: #00ff41;
+            min-width: 80px; /* Aligns the values */
+            display: inline-block;
+        }
+        .full-width {
+            grid-column: 1 / -1; /* Makes an item span both columns */
+            word-break: break-all;
         }
     </style>
 </head>
@@ -39,7 +52,7 @@
     <h1>SYSTEM LOG</h1>
     <h2>TOTAL ENGAGEMENTS: <span id="visit-count">...</span></h2>
     <div id="log-container">
-        <!-- Logs will be inserted here -->
+        <!-- Rich data logs will be inserted here -->
     </div>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>

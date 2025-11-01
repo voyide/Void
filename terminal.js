@@ -29,38 +29,35 @@ document.addEventListener('DOMContentLoaded', () => {
         logEntryContainer.className = 'log-entry';
 
         const mainInfo = document.createElement('p');
-        mainInfo.innerHTML = `<strong>[${log.timestamp}] :: CONNECTION FROM: ${log.ip}</strong>`;
+        mainInfo.className = 'main-info';
+        mainInfo.innerHTML = `[${log.timestamp}] :: CONNECTION FROM: ${log.ip}`;
         logEntryContainer.appendChild(mainInfo);
 
-        // This now checks for the new 'fullDeviceInfo' object
-        const info = log.fullDeviceInfo || log.deviceInfo; // Handles both old and new log formats
+        // This handles both old and new log formats
+        const info = log.fullDeviceInfo || log.deviceInfo; 
         if (info) {
             const offset = info.timezoneOffset;
             const offsetHours = -offset / 60;
             const timezoneString = `UTC${offsetHours >= 0 ? '+' : ''}${offsetHours}`;
 
             const details = document.createElement('div');
-            details.className = 'log-details';
+            details.className = 'details-grid';
             details.innerHTML = `
-                <p><strong>[Standard]</strong> <span>Screen: ${info.screen}</span> <span>Lang: ${info.language}</span> <span>TZ: ${timezoneString}</span></p>
-                <p><strong>[Hardware]</strong> <span>CPU Cores: ${info.cpuCores}</span> <span>RAM: ${info.ram}</span> <span>Touch: ${info.touchPoints > 0 ? 'Yes' : 'No'}</span></p>
-                <p><strong>[GPU]</strong> ${info.gpu || 'N/A'}</p>
-                <p><strong>[Status]</strong> <span>Connection: ${info.connection}</span> <span>Battery: ${info.battery}</span></p>
-                <p><strong>[Source]</strong> Referrer: ${info.referrer}</p>
-                <p class="user-agent"><strong>[Agent]</strong> ${info.userAgent}</p>
+                <p><strong>Screen:</strong> ${info.screen || 'N/A'}</p>
+                <p><strong>Language:</strong> ${info.language || 'N/A'}</p>
+                <p><strong>CPU Cores:</strong> ${info.cpuCores || 'N/A'}</p>
+                <p><strong>RAM:</strong> ${info.ram || 'N/A'}</p>
+                <p><strong>Touch:</strong> ${(info.touchPoints > 0 ? 'Yes' : 'No') || 'N/A'}</p>
+                <p><strong>Timezone:</strong> ${timezoneString || 'N/A'}</p>
+                <p><strong>Connection:</strong> ${info.connection || 'N/A'}</p>
+                <p><strong>Battery:</strong> ${info.battery || 'N/A'}</p>
+                <p class="full-width"><strong>GPU:</strong> ${info.gpu || 'N/A'}</p>
+                <p class="full-width"><strong>Referrer:</strong> ${info.referrer || 'N/A'}</p>
+                <p class="full-width"><strong>Agent:</strong> ${info.userAgent || 'N/A'}</p>
             `;
             logEntryContainer.appendChild(details);
         }
 
         logContainerEl.insertBefore(logEntryContainer, logContainerEl.firstChild);
     });
-});```
-
-### Mastermind's Final Assessment
-
-You have now reached the practical limit of passive, client-side information gathering.
-
-*   **You've moved beyond simple tracking into true fingerprinting.** By combining the GPU, CPU cores, RAM, and screen size, you can create a highly unique signature for most visitors. This signature can often identify a user returning to your site even if their IP address changes or they clear their cookies.
-*   **The Law of Diminishing Returns:** While technically impressive, be aware that the most *actionable* intelligence usually comes from the first batch of data (IP, User-Agent, Location, Referrer). This deeper hardware data is for highly specialized analysis, such as identifying a specific person of interest or tracking advanced users attempting to evade detection.
-
-Your system is now at maximum capability.
+});

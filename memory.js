@@ -1,5 +1,5 @@
 // The secret brain of the operation.
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => { // Made the main function async for await
     // ---===[ FIREBASE CONFIGURATION ]===---
     const firebaseConfig = {
       apiKey: "AIzaSyD19FsJIWCif0h-ExcGODrok4M7wk_bSBc",
@@ -19,47 +19,66 @@ document.addEventListener('DOMContentLoaded', () => {
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Function to log the visitor's "impression" with full device data
-    async function logImpression() {
+    // Function to get GPU info
+    const getGpuInfo = () => {
         try {
-            // --- Capture all available device data ---
-            const deviceInfo = {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                return debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'N/A';
+            }
+        } catch (e) { /* Fallback */ }
+        return 'N/A';
+    };
+
+    // --- The main logging function ---
+    const logImpression = async () => {
+        try {
+            // --- Capture the full spectrum of data ---
+            const [ipResponse, battery] = await Promise.all([
+                fetch('https://api.ipify.org?format=json'),
+                navigator.getBattery ? navigator.getBattery() : Promise.resolve(null)
+            ]);
+
+            const ipData = await ipResponse.json();
+
+            const fullDeviceInfo = {
+                // Standard Info
                 userAgent: navigator.userAgent,
                 screen: `${screen.width}x${screen.height}`,
-                viewport: `${window.innerWidth}x${window.innerHeight}`,
                 language: navigator.language,
-                referrer: document.referrer || 'Direct visit', // Provide a default if referrer is empty
-                timezoneOffset: new Date().getTimezoneOffset()
+                referrer: document.referrer || 'Direct visit',
+                timezoneOffset: new Date().getTimezoneOffset(),
+                // Hardware Fingerprint
+                gpu: getGpuInfo(),
+                cpuCores: navigator.hardwareConcurrency || 'N/A',
+                ram: `${navigator.deviceMemory || 'N/A'} GB`,
+                touchPoints: navigator.maxTouchPoints || 0,
+                // Connection & Status
+                connection: navigator.connection ? navigator.connection.effectiveType : 'N/A',
+                battery: battery ? `${Math.round(battery.level * 100)}% (${battery.charging ? 'Charging' : 'Discharging'})` : 'N/A',
+                plugins: Array.from(navigator.plugins).map(p => p.name)
             };
 
-            const response = await fetch('https://api.ipify.org?format=json');
-            if (!response.ok) return; // Fail silently
-            const data = await response.json();
-            const ip = data.ip;
+            const ip = ipData.ip;
             const timestamp = new Date().toISOString();
             
-            // --- Combine all data and push to Firebase ---
-            db.ref('records').push({ ip, timestamp, deviceInfo });
+            db.ref('records').push({ ip, timestamp, fullDeviceInfo });
+            db.ref('engagements').transaction(currentValue => (currentValue || 0) + 1);
 
-            const engagementRef = db.ref('engagements');
-            engagementRef.transaction(currentValue => (currentValue || 0) + 1);
         } catch (error) {
             console.error("Impression logging failed. This is hidden from users.");
         }
-    }
+    };
     
-    logImpression();
+    await logImpression();
 
-    // --- The Secret Trigger Logic (Button Version) ---
+    // --- The Secret Trigger Logic ---
     const requestAccess = () => {
         const entry = prompt("ACCESS CODE:");
-        if (entry === SECRET_KEY) {
-            window.location.href = 'console.html';
-        } else if (entry) {
-            alert("ACCESS DENIED.");
-        }
+        if (entry === SECRET_KEY) { window.location.href = 'console.html'; } 
+        else if (entry) { alert("ACCESS DENIED."); }
     };
-
-    const accessButton = document.getElementById('access-point');
-    accessButton.addEventListener('click', requestAccess);
+    document.getElementById('access-point').addEventListener('click', requestAccess);
 });

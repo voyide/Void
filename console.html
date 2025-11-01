@@ -9,7 +9,6 @@
         h1, h2 { border-bottom: 1px solid #00ff41; padding-bottom: 5px; }
         #log-container { max-height: 70vh; overflow-y: auto; border: 1px solid #333; padding: 10px; }
         
-        /* --- New layout for rich data entries --- */
         .log-entry {
             border-bottom: 1px dashed #444;
             padding-bottom: 15px;
@@ -33,9 +32,10 @@
         .details-grid p {
             margin: 0;
             padding: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            /* --- THIS IS THE FIX --- */
+            /* The old rules that caused "..." have been removed. */
+            /* This new rule ensures long text wraps instead of being cut off. */
+            word-break: break-all; 
         }
         .details-grid strong {
             color: #00ff41;
@@ -44,7 +44,6 @@
         }
         .full-width {
             grid-column: 1 / -1; /* Makes an item span both columns */
-            word-break: break-all;
         }
     </style>
 </head>

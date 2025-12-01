@@ -8,106 +8,104 @@
         /* --- [ STYLE SECTION ] --- */
         body { 
             font-family: 'Courier New', monospace; 
-            background-color: #0c0c0c; 
+            background-color: #050505; 
             color: #00ff41; 
-            padding: 20px; 
+            padding: 10px; 
             margin: 0;
+            font-size: 14px;
         }
         h1 { 
             border-bottom: 2px solid #00ff41; 
             padding-bottom: 10px; 
-            margin-bottom: 20px; 
-            text-transform: uppercase; 
-            letter-spacing: 2px; 
-            font-size: 1.5rem;
+            margin-bottom: 15px; 
+            font-size: 1.2rem;
+            word-break: break-word;
         }
         .stat-box { 
-            margin-bottom: 20px; 
-            font-size: 1.2em; 
+            margin-bottom: 15px; 
             border: 1px solid #333;
-            padding: 10px;
+            padding: 8px;
             background: #111;
-            display: inline-block;
+            font-weight: bold;
         }
         
         #log-container { 
-            height: 80vh; 
+            height: 85vh; 
             overflow-y: auto; 
             border: 1px solid #333; 
-            padding: 10px; 
             background: #000; 
-            box-shadow: 0 0 10px rgba(0,255,65,0.1); 
         }
-        
-        /* Scrollbar Styling */
-        #log-container::-webkit-scrollbar { width: 8px; }
-        #log-container::-webkit-scrollbar-thumb { background: #00ff41; border-radius: 4px; }
-        #log-container::-webkit-scrollbar-track { background: #111; }
 
         .log-entry { 
-            border-bottom: 1px dashed #444; 
-            padding: 15px 0; 
-            animation: fadeIn 0.3s ease-in; 
+            border-bottom: 1px solid #333; 
+            padding: 15px 10px; 
+            margin-bottom: 5px;
         }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+        /* --- THE HEADER (Date & IP) --- */
         .header-line { 
-            font-weight: bold; 
             margin-bottom: 10px; 
             color: #fff; 
             background: #1a1a1a; 
-            padding: 5px; 
+            padding: 8px; 
+            border-left: 3px solid #00ff41;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
-        .timestamp { color: #00ff41; margin-right: 15px; }
+        .timestamp { color: #f60; font-weight: bold; }
+        .ip-address { color: #00ff41; font-weight: bold; font-size: 1.1em;}
 
-        /* Grid Layout for Data */
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
-            font-size: 0.85rem;
-            color: #ccc;
-        }
-
-        .section { margin-bottom: 5px; }
-        .section-title { 
-            color: #f60; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            margin-bottom: 5px; 
-            display: block; 
+        /* --- THE DATA GRID --- */
+        .data-group { margin-top: 10px; }
+        .group-title { 
+            color: #888; 
             border-bottom: 1px solid #333; 
+            margin-bottom: 5px; 
+            font-size: 0.8em; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+
+        .data-row { 
+            display: flex; 
+            flex-direction: column; /* Stack on mobile for space */
+            margin-bottom: 8px; 
+        }
+
+        .label { 
+            color: #555; 
+            font-size: 0.85em; 
+            margin-bottom: 2px;
+        }
+
+        .value { 
+            color: #ddd; 
+            /* THIS FIXES THE TRUNCATION */
+            white-space: pre-wrap; 
+            word-break: break-word; 
+            overflow-wrap: break-word;
+            font-size: 0.95em;
         }
         
-        .data-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-        .label { color: #666; }
-        .value { color: #ddd; text-align: right; word-break: break-all; max-width: 65%; }
-        
-        .alert { color: #ff3333; font-weight: bold; } /* Red for blocked/detected items */
-        .highlight { color: #00ff41; }
+        .alert { color: #ff3333; } 
     </style>
 </head>
 <body>
 
-    <!-- [ UI SECTION ] -->
-    <h1>// VOID_OPERATION // GLOBAL_LOGS</h1>
+    <h1>// GLOBAL_LOGS</h1>
     
     <div class="stat-box">
-        TOTAL TARGETS ENGAGED: <span id="visit-count" style="color:#fff">0</span>
+        TARGETS: <span id="visit-count" style="color:#fff">0</span>
     </div>
     
-    <div id="log-container">
-        Loading data stream...
-    </div>
+    <div id="log-container">Initializing...</div>
 
-    <!-- [ LIBRARIES ] -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-    <!-- [ LOGIC SECTION ] -->
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyD19FsJIWCif0h-ExcGODrok4M7wk_bSBc",
             authDomain: "void-81e60.firebaseapp.com",
@@ -118,79 +116,88 @@
             appId: "1:749357378719:web:6343550759a405e5c1c6aa"
         };
 
-        // Initialize
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        
         const container = document.getElementById('log-container');
-        const counter = document.getElementById('visit-count');
-
-        // 1. Live Visit Counter
+        
+        // Counter
         db.ref('engagements').on('value', snap => {
-            counter.innerText = snap.val() || 0;
+            document.getElementById('visit-count').innerText = snap.val() || 0;
         });
 
-        // 2. Live Log Stream
+        // --- CUSTOM DATE FORMATTER ---
+        // Desired: xth Mon. 2025, y:z am/pm
+        const formatDate = (isoString) => {
+            if (!isoString) return 'Unknown Time';
+            const d = new Date(isoString);
+            
+            // Day suffix (st, nd, rd, th)
+            const day = d.getDate();
+            const suffix = ["th", "st", "nd", "rd"][(day % 10 > 3 || [11, 12, 13].includes(day % 100)) ? 0 : day % 10];
+            
+            // Month
+            const month = d.toLocaleString('en-IN', { month: 'short' });
+            const year = d.getFullYear();
+            
+            // Time
+            const time = d.toLocaleString('en-IN', { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: "Asia/Kolkata" });
+
+            return `${day}${suffix} ${month}. ${year}, ${time}`;
+        };
+
+        // --- DATA STREAM ---
         db.ref('records').limitToLast(50).on('child_added', (snapshot) => {
-            // Remove "Loading..." text if present
-            if(container.innerHTML.includes('Loading')) container.innerHTML = '';
+            if(container.innerHTML.includes('Initializing')) container.innerHTML = '';
 
             const data = snapshot.val();
-            const info = data.fullDeviceInfo || {};
+            const info = data.fullDeviceInfo || {}; // Handle new structure
             
             const entry = document.createElement('div');
             entry.className = 'log-entry';
 
-            // Helper function to build a data row
-            const row = (label, val, isAlert) => `
+            const row = (lbl, val) => `
                 <div class="data-row">
-                    <span class="label">${label}</span>
-                    <span class="value ${isAlert ? 'alert' : ''}">${val || 'N/A'}</span>
+                    <span class="label">${lbl}</span>
+                    <span class="value">${val || 'N/A'}</span>
                 </div>`;
 
-            // HTML Template for the Log Entry
+            // FALLBACK LOGIC: If explicit OS is missing, show the full User Agent
+            const osDisplay = (info.osPlatform && info.osPlatform !== 'Unknown') 
+                ? info.osPlatform 
+                : (info.userAgentOS || info.userAgent || 'N/A');
+
             entry.innerHTML = `
                 <div class="header-line">
-                    <span class="timestamp">[${data.timestamp}]</span> 
-                    IP: <span class="highlight">${data.ip}</span> 
-                    ${info.localIP && info.localIP !== 'Hidden' ? `(LAN: ${info.localIP})` : ''}
+                    <span class="timestamp">${formatDate(data.timestamp)}</span> 
+                    <span class="ip-address">IP: ${data.ip}</span>
                 </div>
-                
-                <div class="grid-container">
-                    <div class="section">
-                        <span class="section-title">Identity & Net</span>
-                        ${row('Local IP', info.localIP)}
-                        ${row('Referrer', info.referrer)}
-                        ${row('Connection', info.connection)}
-                        ${row('AdBlock', info.adBlocker, info.adBlocker === 'DETECTED')}
-                    </div>
 
-                    <div class="section">
-                        <span class="section-title">Software Scan</span>
-                        ${row('OS Platform', info.osPlatform)}
-                        ${row('OS Fonts', info.osFonts)}
-                        ${row('Extensions', info.extensions, info.extensions !== 'None Detected')}
-                    </div>
+                <div class="data-group">
+                    <div class="group-title">Network & Location</div>
+                    ${row('Local IP (WebRTC)', info.localIP)}
+                    ${row('Referrer', info.referrer)}
+                    ${row('Connection', info.connection || info.connectionType)}
+                </div>
 
-                    <div class="section">
-                        <span class="section-title">Hardware ID</span>
-                        ${row('GPU', info.gpu ? info.gpu.substring(0,25)+'...' : 'N/A')}
-                        ${row('CPU Cores', info.cpu)}
-                        ${row('RAM', info.ram)}
-                        ${row('Storage Est', info.storage)}
-                        ${row('Battery', info.battery)}
-                    </div>
+                <div class="data-group">
+                    <div class="group-title">Device & Hardware</div>
+                    ${row('Operating System', osDisplay)} 
+                    ${row('GPU Renderer', info.gpu || info.gpuRenderer)}
+                    ${row('CPU Cores', info.cpu || info.cpuCores)}
+                    ${row('RAM', info.ram)}
+                    ${row('Screen Resolution', info.screen)}
+                    ${row('Battery', info.battery)}
+                </div>
 
-                    <div class="section">
-                        <span class="section-title">Digital Fingerprints</span>
-                        ${row('Canvas Hash', info.canvasHash ? info.canvasHash.substring(0, 15)+'...' : 'N/A')}
-                        ${row('Audio Hash', info.audioHash ? info.audioHash.toFixed(8) : 'N/A')}
-                        ${row('Screen', info.screen)}
-                    </div>
+                <div class="data-group">
+                    <div class="group-title">Software Fingerprint</div>
+                    ${row('Browser Engine', info.userAgent || 'N/A')}
+                    ${row('Extensions', info.extensions)}
+                    ${row('Canvas Hash', info.canvasHash)}
+                    ${row('Audio Hash', info.audioHash)}
                 </div>
             `;
 
-            // Insert new log at the top
             container.insertBefore(entry, container.firstChild);
         });
     });

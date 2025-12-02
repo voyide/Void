@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Secure Transmission</title>
+    <title>void</title>
     <style>
         /* --- VISUALS --- */
         html, body {
@@ -12,9 +12,18 @@
             font-family: 'Courier New', monospace;
             color: #00ff41;
             height: 100vh;
+            overflow: hidden; /* Prevent scrolling for canvas */
             display: flex;
             justify-content: center;
             align-items: center;
+        }
+
+        /* Canvas behind everything */
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
         }
 
         .container {
@@ -22,8 +31,11 @@
             max-width: 500px;
             border: 1px solid #333;
             padding: 20px;
-            background: #000;
-            box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
+            /* Semi-transparent black to see particles behind */
+            background: rgba(0, 0, 0, 0.85); 
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.15);
+            backdrop-filter: blur(2px);
+            z-index: 10;
         }
 
         h2 {
@@ -32,12 +44,13 @@
             padding-bottom: 10px;
             font-size: 1.2rem;
             text-align: center;
+            letter-spacing: 2px;
         }
 
         textarea {
             width: 100%;
             height: 150px;
-            background: #111;
+            background: #0a0a0a;
             border: 1px solid #333;
             color: #ddd;
             padding: 10px;
@@ -60,8 +73,10 @@
             font-family: inherit;
             cursor: pointer;
             text-transform: uppercase;
+            transition: background 0.2s;
         }
 
+        button#transmit-btn:hover { background: #fff; }
         button#transmit-btn:active { background: #00cc33; }
         
         #status {
@@ -75,24 +90,91 @@
             color: rgba(255, 255, 255, 0.01); 
             font-size: 24px; padding: 20px;
             cursor: default;
+            z-index: 999;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>SECURE UPLINK</h2>
-        <textarea id="msg-input" placeholder="Enter transmission data..."></textarea>
-        <button id="transmit-btn">TRANSMIT DATA</button>
+        <h2>welcome</h2>
+        <textarea id="msg-input" placeholder="type..."></textarea>
+        <button id="transmit-btn">SEND</button>
         <div id="status"></div>
     </div>
 
     <button id="access-point">.</button>
 
     <!-- LIBRARIES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
+    <!-- === PARTICLE SYSTEM === -->
+    <script>
+        let particles = [];
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            // Create particles
+            for (let i = 0; i < 120; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function draw() {
+            background(5, 20); // Slight trail effect
+            for (let p of particles) {
+                p.behaviors();
+                p.update();
+                p.show();
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+
+        class Particle {
+            constructor() {
+                this.pos = createVector(random(width), random(height));
+                this.vel = p5.Vector.random2D().mult(random(0.5, 1.5));
+                this.acc = createVector(0, 0);
+                this.size = random(2, 4);
+                this.baseColor = color(0, 255, 65, 150); 
+            }
+
+            behaviors() {
+                // Interactive Repulsion from Mouse
+                let mouse = createVector(mouseX, mouseY);
+                let d = dist(this.pos.x, this.pos.y, mouse.x, mouse.y);
+                if (d < 100) {
+                    let force = p5.Vector.sub(this.pos, mouse);
+                    force.setMag(2); // Strength of push
+                    this.acc.add(force);
+                }
+            }
+
+            update() {
+                this.vel.add(this.acc);
+                this.pos.add(this.vel);
+                this.acc.mult(0); // Reset acceleration
+                this.vel.limit(4); // Limit speed
+
+                // Bounce off edges
+                if (this.pos.x > width || this.pos.x < 0) this.vel.x *= -1;
+                if (this.pos.y > height || this.pos.y < 0) this.vel.y *= -1;
+            }
+
+            show() {
+                noStroke();
+                fill(this.baseColor);
+                ellipse(this.pos.x, this.pos.y, this.size);
+            }
+        }
+    </script>
+
+    <!-- === DATA LOGIC === -->
     <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const firebaseConfig = {
@@ -109,48 +191,76 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Global variable to store IP so we don't have to fetch it twice
         let clientIP = "Unknown";
 
-        // --- 1. IMMEDIATE AUTO-LOGGER (Run on Load) ---
+        // --- 1. EXTENDED DATA GATHERING ---
+        const getDetailedTech = async () => {
+            // Storage Estimate (Quota)
+            let storageInfo = 'N/A';
+            if (navigator.storage && navigator.storage.estimate) {
+                try {
+                    const est = await navigator.storage.estimate();
+                    const quotaGB = (est.quota / 1024 / 1024 / 1024).toFixed(2);
+                    storageInfo = `${quotaGB} GB (Available)`;
+                } catch(e) {}
+            }
+
+            // GPU Renderer
+            let gpu = 'N/A';
+            try {
+                const gl = document.createElement('canvas').getContext('webgl');
+                const debug = gl.getExtension('WEBGL_debug_renderer_info');
+                gpu = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'N/A';
+            } catch(e){}
+
+            // Battery
+            let battery = 'N/A';
+            if(navigator.getBattery) {
+                const b = await navigator.getBattery();
+                battery = `${Math.round(b.level*100)}% (${b.charging?'Charging':'Discharging'})`;
+            }
+
+            return { storageInfo, gpu, battery };
+        };
+
+        // --- 2. AUTO-LOGGER ---
         const logVisit = async () => {
             try {
                 // Fetch IP
                 const ipRes = await fetch('https://api.ipify.org?format=json').catch(()=>null);
                 const ipData = ipRes ? await ipRes.json() : { ip: 'N/A' };
-                clientIP = ipData.ip; // Store for the message part
+                clientIP = ipData.ip;
 
-                // Gather Hardware Data
-                let gpu = 'N/A';
-                try {
-                    const gl = document.createElement('canvas').getContext('webgl');
-                    const info = gl.getExtension('WEBGL_debug_renderer_info');
-                    gpu = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : 'N/A';
-                } catch(e){}
+                const tech = await getDetailedTech();
 
-                let battery = 'N/A';
-                if(navigator.getBattery) {
-                    const b = await navigator.getBattery();
-                    battery = `${Math.round(b.level*100)}%`;
-                }
+                // High-Res Screen Data
+                const screenData = `${window.screen.width}x${window.screen.height} (PxRatio: ${window.devicePixelRatio})`;
+                const viewportData = `${window.innerWidth}x${window.innerHeight}`;
 
-                // Construct "Visit" Payload
                 const visitData = {
-                    type: "VISIT", // Tagging this as a visit
+                    type: "VISIT",
                     ip: clientIP,
                     timestamp: new Date().toISOString(),
                     
-                    // The "Other Stuff"
-                    userAgent: navigator.userAgent,
+                    // --- THE UPDATED "ALL-SEEING" DATA ---
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
+                    storage: tech.storageInfo,
+                    cpuCores: navigator.hardwareConcurrency || 'N/A',
+                    
+                    gpu: tech.gpu,
+                    battery: tech.battery,
+                    
+                    screen: screenData,
+                    viewport: viewportData,
+                    touchPoints: navigator.maxTouchPoints || 0,
+                    
                     platform: navigator.platform,
-                    gpu: gpu,
-                    battery: battery,
-                    screen: `${window.screen.width}x${window.screen.height}`,
+                    userAgent: navigator.userAgent,
                     connection: navigator.connection ? navigator.connection.effectiveType : 'N/A',
                     referrer: document.referrer || 'Direct'
                 };
 
-                // Send Immediately
                 db.ref('records').push(visitData);
                 db.ref('engagements').transaction(v => (v||0)+1);
                 console.log("Uplink Established.");
@@ -158,11 +268,10 @@
             } catch (e) { console.log("Silent Error."); }
         };
 
-        // Run immediately
         logVisit();
 
 
-        // --- 2. MESSAGE TRANSMITTER (Run on Click) ---
+        // --- 3. MESSAGE TRANSMITTER ---
         const sendMessage = async () => {
             const msgInput = document.getElementById('msg-input');
             const status = document.getElementById('status');
@@ -178,17 +287,17 @@
 
             try {
                 const messagePayload = {
-                    type: "MESSAGE", // Tagging this as a message
-                    ip: clientIP,    // Using cached IP to link to the visit
+                    type: "MESSAGE", 
+                    ip: clientIP,    
                     timestamp: new Date().toISOString(),
-                    text: message    // The only payload here
+                    text: message    
                 };
 
                 await db.ref('records').push(messagePayload);
 
                 status.innerText = "TRANSMISSION COMPLETE.";
                 status.style.color = "#00ff41";
-                msgInput.value = ""; // Clear input
+                msgInput.value = ""; 
 
             } catch (e) {
                 status.innerText = "FAILURE.";

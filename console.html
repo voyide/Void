@@ -33,14 +33,29 @@
             word-wrap: break-word;
         }
 
-        /* HARDWARE STYLE */
-        .data-row { display: flex; flex-direction: column; margin-bottom: 5px; border-bottom: 1px dashed #222; }
-        .label { color: #666; font-size: 0.8em; }
+        /* DATA GRID */
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two columns on larger screens */
+            gap: 5px;
+        }
+        .data-row { 
+            display: flex; flex-direction: column; 
+            border-bottom: 1px dashed #222; padding-bottom: 4px; margin-bottom: 4px;
+        }
+        .label { color: #666; font-size: 0.8em; text-transform: uppercase; }
         .value { color: #ddd; white-space: pre-wrap; word-break: break-word; }
         
+        .full-width { grid-column: 1 / -1; }
+
         /* COLORS */
         .col-visit { color: #00ff41; }
         .col-msg { color: #f60; }
+
+        /* Mobile Adjust */
+        @media (max-width: 600px) {
+            .data-grid { grid-template-columns: 1fr; }
+        }
 
     </style>
 </head>
@@ -88,15 +103,14 @@
             if(container.innerHTML.includes('Awaiting')) container.innerHTML = '';
 
             const data = snapshot.val();
-            // Fallback for old data vs new data
             const info = data.fullDeviceInfo || data;
             
             // Determine Type
             let type = "UNKNOWN";
             if (info.type === "VISIT") type = "VISIT";
             else if (info.type === "MESSAGE") type = "MESSAGE";
-            else if (info.message) type = "MESSAGE"; // Backward compatibility
-            else type = "VISIT"; // Default
+            else if (info.message) type = "MESSAGE"; 
+            else type = "VISIT"; 
 
             const entry = document.createElement('div');
             entry.className = 'log-entry';
@@ -115,20 +129,35 @@
 
             // HTML for Content
             if (type === 'MESSAGE') {
-                // Just show the message content
                 const msgText = info.text || info.message || '[Empty Payload]';
                 html += `<div class="msg-content">${msgText}</div>`;
             } else {
-                // Show the Hardware Data
-                const row = (lbl, val) => `<div class="data-row"><span class="label">${lbl}</span><span class="value">${val || 'N/A'}</span></div>`;
+                // VISITOR DATA - NOW WITH THE NEW FIELDS
+                const row = (lbl, val, full=false) => `
+                    <div class="data-row ${full?'full-width':''}">
+                        <span class="label">${lbl}</span>
+                        <span class="value">${val || 'N/A'}</span>
+                    </div>`;
                 
                 html += `
-                    ${row('Device', info.userAgent)}
+                <div class="data-grid">
+                    ${row('Device / Browser', info.userAgent, true)}
                     ${row('Platform', info.platform)}
-                    ${row('Screen', info.screen)}
+                    ${row('Timezone', info.timezone)}
+                    
+                    ${row('Screen Size', info.screen)}
+                    ${row('Window Size', info.viewport)}
+                    
+                    ${row('RAM', info.ram)}
+                    ${row('Storage', info.storage)}
+                    ${row('CPU Cores', info.cpuCores)}
+                    ${row('Touch Points', info.touchPoints)}
+                    
                     ${row('Battery', info.battery)}
-                    ${row('GPU', info.gpu)}
                     ${row('Connection', info.connection)}
+                    
+                    ${row('GPU Renderer', info.gpu, true)}
+                </div>
                 `;
             }
 

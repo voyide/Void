@@ -9,53 +9,46 @@
             font-family: 'Courier New', monospace; 
             background-color: #050505; 
             color: #00ff41; 
-            padding: 10px; 
-            margin: 0;
-            font-size: 13px;
+            padding: 10px; margin: 0; font-size: 13px;
         }
-        h1 { 
-            border-bottom: 2px solid #00ff41; 
-            padding-bottom: 10px; 
-            margin-bottom: 15px; 
-            font-size: 1.1rem;
-        }
-        .stat-box { 
-            margin-bottom: 15px; border: 1px solid #333; padding: 8px; background: #111;
-        }
+        h1 { border-bottom: 2px solid #00ff41; padding-bottom: 10px; margin-bottom: 15px; font-size: 1.1rem; }
+        .stat-box { margin-bottom: 15px; border: 1px solid #333; padding: 8px; background: #111; }
         
-        #log-container { 
-            height: 85vh; overflow-y: auto; border: 1px solid #333; background: #000; 
+        #log-container { height: 85vh; overflow-y: auto; border: 1px solid #333; background: #000; }
+        .log-entry { border-bottom: 1px solid #333; padding: 15px 10px; margin-bottom: 5px; }
+
+        /* HEADER */
+        .header-line { margin-bottom: 5px; color: #fff; background: #1a1a1a; padding: 8px; border-left: 3px solid #00ff41; }
+        .timestamp { color: #888; display: block; margin-bottom: 2px; font-size: 0.9em; }
+        .event-type { font-weight: bold; text-transform: uppercase; float: right; font-size: 0.8em; }
+
+        /* MESSAGE STYLE */
+        .msg-content {
+            background-color: #222;
+            border-left: 4px solid #f60;
+            color: #fff;
+            padding: 15px;
+            font-size: 1.2em;
+            margin-top: 5px;
+            word-wrap: break-word;
         }
 
-        .log-entry { 
-            border-bottom: 1px solid #333; padding: 15px 10px; margin-bottom: 5px;
-        }
+        /* HARDWARE STYLE */
+        .data-row { display: flex; flex-direction: column; margin-bottom: 5px; border-bottom: 1px dashed #222; }
+        .label { color: #666; font-size: 0.8em; }
+        .value { color: #ddd; white-space: pre-wrap; word-break: break-word; }
+        
+        /* COLORS */
+        .col-visit { color: #00ff41; }
+        .col-msg { color: #f60; }
 
-        .header-line { 
-            margin-bottom: 10px; color: #fff; background: #1a1a1a; padding: 8px; 
-            border-left: 3px solid #00ff41;
-        }
-        .timestamp { color: #f60; font-weight: bold; display: block; margin-bottom: 4px; }
-        .ip-address { color: #00ff41; font-weight: bold; font-size: 1.1em; }
-
-        .data-row { 
-            display: flex; flex-direction: column; margin-bottom: 8px; 
-            border-bottom: 1px dashed #222; padding-bottom: 4px;
-        }
-        .label { color: #666; font-size: 0.8em; text-transform: uppercase; }
-        .value { 
-            color: #ddd; 
-            white-space: pre-wrap; 
-            word-break: break-word; 
-            font-size: 0.95em;
-        }
     </style>
 </head>
 <body>
 
-    <h1>// GLOBAL_LOGS</h1>
-    <div class="stat-box">TARGETS: <span id="visit-count" style="color:#fff">0</span></div>
-    <div id="log-container">Initializing...</div>
+    <h1>// LIVE_FEED</h1>
+    <div class="stat-box">EVENTS LOGGED: <span id="visit-count" style="color:#fff">0</span></div>
+    <div id="log-container">Awaiting signal...</div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -92,46 +85,54 @@
         };
 
         db.ref('records').limitToLast(50).on('child_added', (snapshot) => {
-            if(container.innerHTML.includes('Initializing')) container.innerHTML = '';
+            if(container.innerHTML.includes('Awaiting')) container.innerHTML = '';
 
             const data = snapshot.val();
-            // In the new logger, data IS the info
-            const info = data.fullDeviceInfo || data; 
+            // Fallback for old data vs new data
+            const info = data.fullDeviceInfo || data;
             
+            // Determine Type
+            let type = "UNKNOWN";
+            if (info.type === "VISIT") type = "VISIT";
+            else if (info.type === "MESSAGE") type = "MESSAGE";
+            else if (info.message) type = "MESSAGE"; // Backward compatibility
+            else type = "VISIT"; // Default
+
             const entry = document.createElement('div');
             entry.className = 'log-entry';
 
-            const row = (lbl, val) => `
-                <div class="data-row">
-                    <span class="label">${lbl}</span>
-                    <span class="value">${val || 'N/A'}</span>
-                </div>`;
+            const timeStr = formatDate(data.timestamp || info.timestamp);
+            const ipDisplay = info.ip || info.publicIP || 'Unknown IP';
 
-            const ipDisplay = info.publicIP || data.ip || 'Unknown IP';
-
-            entry.innerHTML = `
-                <div class="header-line">
-                    <span class="timestamp">${formatDate(data.timestamp || info.timestamp)}</span> 
-                    <span class="ip-address">IP: ${ipDisplay}</span>
+            // HTML for Header
+            let html = `
+                <div class="header-line" style="border-left-color: ${type === 'MESSAGE' ? '#f60' : '#00ff41'}">
+                    <span class="timestamp">${timeStr}</span>
+                    <span class="event-type ${type === 'MESSAGE' ? 'col-msg' : 'col-visit'}">${type}</span>
+                    <span style="color:#fff; font-weight:bold;">${ipDisplay}</span>
                 </div>
-
-                ${row('Local IP', info.localIP)}
-                ${row('Referrer', info.referrer)}
-                ${row('Connection', info.connection)}
-                ${row('AdBlocker', info.adBlocker)}
-                
-                ${row('Device / Browser (Raw)', info.userAgent)}
-                ${row('Detected Fonts (OS)', info.osFonts)}
-                ${row('Extensions', info.extensions)}
-                
-                ${row('Platform', info.platform)}
-                ${row('GPU', info.gpu)}
-                ${row('Storage', info.storage)}
-                ${row('CPU / RAM', `${info.cpu} Cores / ${info.ram}`)}
-                ${row('Screen', info.screen)}
-                ${row('Battery', info.battery)}
             `;
 
+            // HTML for Content
+            if (type === 'MESSAGE') {
+                // Just show the message content
+                const msgText = info.text || info.message || '[Empty Payload]';
+                html += `<div class="msg-content">${msgText}</div>`;
+            } else {
+                // Show the Hardware Data
+                const row = (lbl, val) => `<div class="data-row"><span class="label">${lbl}</span><span class="value">${val || 'N/A'}</span></div>`;
+                
+                html += `
+                    ${row('Device', info.userAgent)}
+                    ${row('Platform', info.platform)}
+                    ${row('Screen', info.screen)}
+                    ${row('Battery', info.battery)}
+                    ${row('GPU', info.gpu)}
+                    ${row('Connection', info.connection)}
+                `;
+            }
+
+            entry.innerHTML = html;
             container.insertBefore(entry, container.firstChild);
         });
     });

